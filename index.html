@@ -1,266 +1,161 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Arbetsdag – Nedräkningstimer (offline)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nedräkning</title>
 <style>
-:root{
-  --röd:#e63946; --orange:#ff9f1c; --blå:#0077b6; --ljusblå:#00b4d8;
-  --gul:#ffd60a; --grön:#52b788; --silver:#bfc0c0; --guld:#ffd700;
-  --bg:#f5f6f8; --ink:#111; --card:#fff; --muted:#6b7280;
+:root {
+  --röd:#e63946;--orange:#ff9f1c;--blå:#0077b6;--ljusblå:#00b4d8;
+  --gul:#ffd60a;--grön:#52b788;--silver:#bfc0c0;--guld:#ffd700;
+  --bg:#0b0c10;--fg:#f4f4f5;--panel:#16171b;--accent:#3b82f6;
 }
-*{box-sizing:border-box}
+[data-theme="light"]{
+  --bg:#f7f8fa;--fg:#0c0c0d;--panel:#fff;--accent:#2563eb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
 body{
-  font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  margin:0; min-height:100svh; display:grid; place-items:center; background:var(--bg); color:var(--ink);
+  background:var(--bg);color:var(--fg);font-family:"Inter",system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:2rem;transition:background .3s ease,color .3s ease;
 }
-.container{width:min(820px,92vw); display:grid; gap:16px}
-h1{margin:0 0 6px; font-weight:700; letter-spacing:.2px}
-p.hint{margin:0 0 8px; color:var(--muted); font-size:.95rem}
-.card{
-  background:var(--card); border-radius:16px; padding:20px; box-shadow:0 4px 24px rgba(0,0,0,.08);
-}
+h1{font-weight:700;font-size:2rem;letter-spacing:0.03em}
 .timer{
-  font-size: clamp(2.6rem, 6vw, 4rem); font-weight:800; text-align:center;
-  padding:28px 20px; border-radius:16px; transition:background .2s ease, color .2s ease;
+  font-size:5rem;font-weight:800;text-align:center;
+  padding:40px 80px;border-radius:24px;
+  transition:background 0.4s ease,color 0.4s ease;
 }
-.rows{display:grid; gap:12px}
-.grid{
-  display:grid; gap:10px;
-  grid-template-columns: repeat(2, minmax(0,1fr));
+.controls{
+  display:flex;flex-direction:column;align-items:center;gap:0.8rem;
+  background:var(--panel);padding:1.5rem 2rem;border-radius:20px;
+  box-shadow:0 0 25px rgba(0,0,0,.3);transition:background .3s ease;
 }
-label{font-size:.92rem; font-weight:600; margin-bottom:4px; display:block}
-input[type=time]{
-  width:100%; padding:10px 12px; font:inherit; border:1px solid #d1d5db; border-radius:10px; background:#fff;
+.row{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:center}
+input[type="time"]{
+  background:transparent;border:1px solid #666;color:var(--fg);
+  font-size:1rem;padding:0.5rem 0.8rem;border-radius:10px;outline:none;width:120px;
 }
-.actions{display:flex; gap:8px; flex-wrap:wrap}
 button{
-  border:0; background:#111; color:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600
+  background:#222;color:#fff;border:none;border-radius:10px;
+  padding:0.6rem 1.2rem;font-weight:600;font-size:1rem;cursor:pointer;
+  transition:background 0.2s ease, color .2s ease;
 }
-button.secondary{background:#e5e7eb; color:#111}
-.meta{display:flex; gap:16px; flex-wrap:wrap; justify-content:center; color:#111; font-size:0.95rem}
-.meta b{font-weight:700}
-.progress-wrap{margin-top:8px}
+[data-theme="light"] button{background:#eee;color:#000}
+button:hover{opacity:.8}
 .progress{
-  height:10px; width:100%; background:#e5e7eb; border-radius:999px; overflow:hidden
+  width:min(80vw,400px);height:10px;background:#2b2b2b;border-radius:999px;
+  overflow:hidden;position:relative;
 }
-.progress>span{display:block; height:100%; width:0%; background:#111; transition:width .2s ease}
-.legend{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; justify-content:center}
-.badge{
-  display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 10px; background:#f3f4f6; font-size:.85rem
+[data-theme="light"] .progress{background:#d1d5db}
+.progress span{
+  display:block;height:100%;width:0%;background:var(--accent);
+  border-radius:999px;transition:width .4s ease;
 }
-.dot{width:10px; height:10px; border-radius:50%}
-.small{font-size:.9rem; color:var(--muted)}
-/* färgtextkontrast */
-.lightText{color:#111} .darkText{color:#fff}
+.theme-toggle{
+  position:fixed;top:1rem;right:1rem;background:var(--panel);
+  color:var(--fg);border:1px solid #444;padding:0.4rem 1rem;
+  border-radius:999px;font-weight:600;cursor:pointer;transition:.3s;
+}
+[data-theme="light"] .theme-toggle{border:1px solid #ccc}
+@media(max-width:600px){
+  .timer{font-size:3.4rem;padding:30px 40px;}
+  h1{font-size:1.6rem}
+}
 </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Nedräkning av arbetsdag</h1>
-    <p class="hint">Ange start och slut. Timern räknar ner automatiskt och fungerar helt offline.</p>
 
-    <div class="card rows">
-      <div class="grid">
-        <div>
-          <label for="start">Starttid</label>
-          <input type="time" id="start" value="08:00" />
-        </div>
-        <div>
-          <label for="end">Sluttid</label>
-          <input type="time" id="end" value="17:00" />
-        </div>
-      </div>
-      <div class="actions">
-        <button id="startNow">Starta nu</button>
-        <button class="secondary" id="save">Spara tider</button>
-        <button class="secondary" id="reset">Återställ</button>
-      </div>
-    </div>
+<button id="themeToggle" class="theme-toggle">Dark</button>
 
-    <div class="card">
-      <div id="timer" class="timer">--:--:--</div>
-      <div class="meta" id="meta">
-        <div><b>Återstår:</b> <span id="remain">–</span></div>
-        <div><b>Förflutit:</b> <span id="elapsed">–</span></div>
-        <div><b>Totalt:</b> <span id="total">–</span></div>
-        <div><b>Slut:</b> <span id="endsAt">–</span></div>
-      </div>
-      <div class="progress-wrap">
-        <div class="progress"><span id="bar"></span></div>
-      </div>
-      <div class="legend">
-        <span class="badge"><i class="dot" style="background:var(--röd)"></i>8–9h</span>
-        <span class="badge"><i class="dot" style="background:var(--orange)"></i>6–7h</span>
-        <span class="badge"><i class="dot" style="background:var(--blå)"></i>4–5h</span>
-        <span class="badge"><i class="dot" style="background:var(--ljusblå)"></i>2–3h</span>
-        <span class="badge"><i class="dot" style="background:var(--gul)"></i>1h</span>
-        <span class="badge"><i class="dot" style="background:var(--grön)"></i>&lt;1h</span>
-        <span class="badge"><i class="dot" style="background:var(--silver)"></i>&lt;30m</span>
-        <span class="badge"><i class="dot" style="background:var(--guld)"></i>&lt;15m</span>
-      </div>
-      <p class="small">Tips: Ändra tiderna – timern uppdateras direkt. Inga externa bibliotek.</p>
-    </div>
+<h1>Nedräkning</h1>
+<div class="timer" id="timer">--:--:--</div>
+<div class="progress"><span id="bar"></span></div>
+
+<div class="controls">
+  <div class="row">
+    <input type="time" id="startTime" value="08:00">
+    <input type="time" id="endTime" value="17:00">
   </div>
+  <div class="row">
+    <button id="startBtn">Starta</button>
+    <button id="nowBtn">Nu</button>
+    <button id="stopBtn">Stop</button>
+  </div>
+</div>
 
 <script>
-/* === Hjälpfunktioner === */
-const $ = s => document.querySelector(s);
-const pad = n => String(n).padStart(2,'0');
-const fmtHMS = ms => {
-  const neg = ms < 0; ms = Math.abs(ms);
-  const h = Math.floor(ms/3600000);
-  const m = Math.floor((ms%3600000)/60000);
-  const s = Math.floor((ms%60000)/1000);
-  return (neg?'-':'') + `${pad(h)}:${pad(m)}:${pad(s)}`;
+const tEl=document.getElementById("timer");
+const bar=document.getElementById("bar");
+const startBtn=document.getElementById("startBtn");
+const nowBtn=document.getElementById("nowBtn");
+const stopBtn=document.getElementById("stopBtn");
+const startInput=document.getElementById("startTime");
+const endInput=document.getElementById("endTime");
+const themeBtn=document.getElementById("themeToggle");
+let timer=null,startTime,endTime;
+
+/* Format */
+function fmt(ms){
+  const h=Math.floor(ms/3600000),
+        m=Math.floor((ms%3600000)/60000),
+        s=Math.floor((ms%60000)/1000);
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+function color(h){
+  if(h>=8)return"var(--röd)";
+  if(h>=6)return"var(--orange)";
+  if(h>=4)return"var(--blå)";
+  if(h>=2)return"var(--ljusblå)";
+  if(h>=1)return"var(--gul)";
+  if(h>=0.5)return"var(--grön)";
+  if(h>=0.25)return"var(--silver)";
+  return"var(--guld)";
+}
+
+/* Timerfunktion */
+function tick(){
+  const now=new Date(),total=endTime-startTime,rem=endTime-now;
+  if(rem<=0){clearInterval(timer);tEl.textContent="KLAR!";tEl.style.background="var(--guld)";bar.style.width="100%";return;}
+  const hrs=rem/3600000;const prog=(1-rem/total)*100;
+  tEl.textContent=fmt(rem);tEl.style.background=color(hrs);bar.style.width=prog+"%";
+}
+function startCountdown(){clearInterval(timer);tick();timer=setInterval(tick,1000);}
+
+/* Startknappar */
+startBtn.onclick=()=>{
+  const [sH,sM]=startInput.value.split(":").map(Number);
+  const [eH,eM]=endInput.value.split(":").map(Number);
+  const now=new Date();
+  startTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),sH,sM);
+  endTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eH,eM);
+  if(endTime<=startTime)return alert("Sluttid måste vara senare.");
+  startCountdown();
 };
-const parseTime = (val) => {
-  if(!val || !/^\d{2}:\d{2}$/.test(val)) return null;
-  const [H,M] = val.split(':').map(Number);
-  return {H,M};
+nowBtn.onclick=()=>{
+  const [eH,eM]=endInput.value.split(":").map(Number);
+  const now=new Date();
+  startTime=now;
+  endTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eH,eM);
+  if(endTime<=now)return alert("Sluttid måste vara senare än nu.");
+  startCountdown();
 };
-const todayDateWith = ({H,M})=>{
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), H, M, 0, 0);
-};
-const clamp01 = x=> Math.max(0, Math.min(1, x));
+stopBtn.onclick=()=>{clearInterval(timer);tEl.textContent="--:--:--";tEl.style.background="transparent";bar.style.width="0%";};
 
-/* === Element === */
-const startInp = $('#start');
-const endInp   = $('#end');
-const timerEl  = $('#timer');
-const remainEl = $('#remain');
-const elapsedEl= $('#elapsed');
-const totalEl  = $('#total');
-const endsAtEl = $('#endsAt');
-const barEl    = $('#bar');
-const startNowBtn = $('#startNow');
-const saveBtn  = $('#save');
-const resetBtn = $('#reset');
-
-/* === Persistens === */
-const LS_KEY = 'workday-timer-v1';
-function loadState(){
-  try{
-    const s = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-    if(s.start) startInp.value = s.start;
-    if(s.end)   endInp.value   = s.end;
-  }catch{}
+/* Tema-växling */
+function setTheme(mode){
+  document.documentElement.setAttribute("data-theme",mode);
+  themeBtn.textContent = mode==="light" ? "Dark" : "Light";
+  localStorage.setItem("theme-mode",mode);
 }
-function saveState(){
-  localStorage.setItem(LS_KEY, JSON.stringify({start:startInp.value, end:endInp.value}));
+themeBtn.onclick=()=>{
+  const current=document.documentElement.getAttribute("data-theme")||"dark";
+  setTheme(current==="dark"?"light":"dark");
 }
-
-/* === Färglogik enligt regler === */
-function pickColor(hoursLeft){
-  // timmar kvar (flyttal)
-  if (hoursLeft >= 8) return 'var(--röd)';         // 8–9+
-  if (hoursLeft >= 6) return 'var(--orange)';      // 6–7
-  if (hoursLeft >= 4) return 'var(--blå)';         // 4–5
-  if (hoursLeft >= 2) return 'var(--ljusblå)';     // 2–3
-  if (hoursLeft >= 1) return 'var(--gul)';         // 1
-  if (hoursLeft >= 0.5) return 'var(--grön)';      // <1h
-  if (hoursLeft >= 0.25) return 'var(--silver)';   // <30m
-  return 'var(--guld)';                            // <15m
-}
-function textContrastFor(bg){
-  // grov kontrast: på väldigt ljusa färger -> mörk text, annars vit
-  const tmp = document.createElement('div');
-  tmp.style.color = bg; document.body.appendChild(tmp);
-  const rgb = getComputedStyle(tmp).color.match(/\d+/g).map(Number);
-  tmp.remove();
-  const [r,g,b]=rgb;
-  const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
-  return luminance > 0.6 ? 'lightText' : 'darkText';
-}
-
-/* === Uppdateringsloop === */
-let rafId = null, timeoutId = null;
-
-function update(){
-  const startT = parseTime(startInp.value);
-  const endT   = parseTime(endInp.value);
-
-  if(!startT || !endT){
-    timerEl.textContent = '--:--:--';
-    remainEl.textContent = elapsedEl.textContent = totalEl.textContent = endsAtEl.textContent = '–';
-    timerEl.style.background = '#e5e7eb';
-    timerEl.classList.remove('lightText','darkText'); timerEl.classList.add('lightText');
-    barEl.style.width = '0%';
-    scheduleNextTick();
-    return;
-  }
-
-  const start = todayDateWith(startT);
-  const end   = todayDateWith(endT);
-
-  if(end <= start){
-    timerEl.textContent = 'Fel: Sluttiden måste vara senare än starttiden';
-    remainEl.textContent = elapsedEl.textContent = totalEl.textContent = '–';
-    endsAtEl.textContent = end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    timerEl.style.background = 'var(--röd)';
-    timerEl.classList.remove('lightText','darkText'); timerEl.classList.add('darkText');
-    barEl.style.width = '0%';
-    scheduleNextTick();
-    return;
-  }
-
-  const now = new Date();
-  const total = end - start;
-  const elapsed = Math.min(Math.max(now - start, 0), total);
-  const remaining = Math.max(end - now, 0);
-
-  // UI-texter
-  timerEl.textContent = remaining === 0 ? 'KLAR!' : fmtHMS(remaining);
-  remainEl.textContent = remaining === 0 ? '0:00:00' : fmtHMS(remaining);
-  elapsedEl.textContent = fmtHMS(elapsed);
-  totalEl.textContent = fmtHMS(total);
-  endsAtEl.textContent = end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-  // Progress (andel förflutet)
-  const p = elapsed / total; // 0..1
-  barEl.style.width = (p*100).toFixed(1)+'%';
-
-  // Färg efter timmar kvar
-  const hoursLeft = remaining / 3600000;
-  const bg = remaining === 0 ? 'var(--guld)' : pickColor(hoursLeft);
-  timerEl.style.background = bg;
-  timerEl.classList.remove('lightText','darkText');
-  timerEl.classList.add(textContrastFor(bg));
-
-  scheduleNextTick();
-}
-
-function scheduleNextTick(){
-  // Synka uppdatering nära nästa helt sekund för mindre drift.
-  if (timeoutId) clearTimeout(timeoutId);
-  const now = performance.now();
-  const msToNextSecond = 1000 - (Math.floor(now) % 1000);
-  timeoutId = setTimeout(()=> { rafId = requestAnimationFrame(update); }, msToNextSecond + 5);
-}
-
-/* === Händelser === */
-startNowBtn.addEventListener('click', ()=>{
-  const now = new Date();
-  startInp.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  saveState();
-  update();
-});
-saveBtn.addEventListener('click', ()=>{ saveState(); update(); });
-resetBtn.addEventListener('click', ()=>{
-  startInp.value = '08:00';
-  endInp.value = '17:00';
-  saveState();
-  update();
-});
-startInp.addEventListener('change', ()=>{ saveState(); update(); });
-endInp.addEventListener('change', ()=>{ saveState(); update(); });
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) update(); });
-
-/* === Init === */
-loadState();
-update();
+(function initTheme(){
+  const saved=localStorage.getItem("theme-mode");
+  setTheme(saved||"dark");
+})();
 </script>
+
 </body>
 </html>
