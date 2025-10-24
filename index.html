@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arbetsdag – Nedräkningstimer</title>
+<style>
+:root {
+  --röd: #e63946;
+  --orange: #ff9f1c;
+  --blå: #0077b6;
+  --ljusblå: #00b4d8;
+  --gul: #ffd60a;
+  --grön: #52b788;
+  --silver: #bfc0c0;
+  --guld: #ffd700;
+  --bakgrund: #f5f6f8;
+  --text: #111;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--bakgrund);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+}
+
+h1 {
+  font-size: 2em;
+  margin-bottom: 1em;
+}
+
+.timer {
+  font-size: 4em;
+  font-weight: bold;
+  padding: 40px 60px;
+  border-radius: 20px;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+.controls {
+  margin-top: 2em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+label {
+  margin-top: 0.5em;
+  font-weight: 600;
+}
+
+input[type="time"] {
+  padding: 0.6em;
+  font-size: 1em;
+  width: 180px;
+  text-align: center;
+  margin-bottom: 0.5em;
+}
+
+button {
+  background: #333;
+  color: #fff;
+  border: none;
+  padding: 0.6em 1.4em;
+  font-size: 1em;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 0.8em;
+}
+
+button:hover {
+  background: #000;
+}
+</style>
+</head>
+<body>
+
+<h1>Nedräkning av arbetsdag</h1>
+
+<div class="timer" id="timer">00:00:00</div>
+
+<div class="controls">
+  <label>Starttid:</label>
+  <input type="time" id="startTime" value="08:00">
+  <label>Sluttid:</label>
+  <input type="time" id="endTime" value="17:00">
+  <button id="startBtn">Starta nedräkning</button>
+</div>
+
+<script>
+const timerEl = document.getElementById("timer");
+const startBtn = document.getElementById("startBtn");
+const startTimeInput = document.getElementById("startTime");
+const endTimeInput = document.getElementById("endTime");
+
+let countdownInterval;
+
+startBtn.addEventListener("click", () => {
+  const startVal = startTimeInput.value;
+  const endVal = endTimeInput.value;
+
+  if (!startVal || !endVal) {
+    alert("Fyll i både starttid och sluttid.");
+    return;
+  }
+
+  const now = new Date();
+  const [startH, startM] = startVal.split(":").map(Number);
+  const [endH, endM] = endVal.split(":").map(Number);
+
+  const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startH, startM);
+  const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endH, endM);
+
+  if (endTime <= startTime) {
+    alert("Sluttiden måste vara senare än starttiden.");
+    return;
+  }
+
+  const totalMs = endTime - startTime;
+
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    const current = new Date();
+    let remaining = endTime - current;
+
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      timerEl.textContent = "KLAR!";
+      timerEl.style.background = "var(--guld)";
+      return;
+    }
+
+    const hrs = Math.floor(remaining / (1000 * 60 * 60));
+    const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((remaining % (1000 * 60)) / 1000);
+
+    timerEl.textContent = `${hrs.toString().padStart(2,"0")}:${mins.toString().padStart(2,"0")}:${secs.toString().padStart(2,"0")}`;
+
+    // Färgbyte beroende på hur mycket tid som är kvar
+    const fraction = remaining / totalMs;
+    const hoursLeft = remaining / (1000 * 60 * 60);
+
+    if (hoursLeft >= 8) timerEl.style.background = "var(--röd)";
+    else if (hoursLeft >= 6) timerEl.style.background = "var(--orange)";
+    else if (hoursLeft >= 4) timerEl.style.background = "var(--blå)";
+    else if (hoursLeft >= 2) timerEl.style.background = "var(--ljusblå)";
+    else if (hoursLeft >= 1) timerEl.style.background = "var(--gul)";
+    else if (hoursLeft >= 0.5) timerEl.style.background = "var(--grön)";
+    else if (hoursLeft >= 0.25) timerEl.style.background = "var(--silver)";
+    else timerEl.style.background = "var(--guld)";
+  }, 1000);
+});
+</script>
+
+</body>
+</html>
