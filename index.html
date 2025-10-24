@@ -1,162 +1,266 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbetsdag – Nedräkningstimer</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Arbetsdag – Nedräkningstimer (offline)</title>
 <style>
-:root {
-  --röd: #e63946;
-  --orange: #ff9f1c;
-  --blå: #0077b6;
-  --ljusblå: #00b4d8;
-  --gul: #ffd60a;
-  --grön: #52b788;
-  --silver: #bfc0c0;
-  --guld: #ffd700;
-  --bakgrund: #f5f6f8;
-  --text: #111;
+:root{
+  --röd:#e63946; --orange:#ff9f1c; --blå:#0077b6; --ljusblå:#00b4d8;
+  --gul:#ffd60a; --grön:#52b788; --silver:#bfc0c0; --guld:#ffd700;
+  --bg:#f5f6f8; --ink:#111; --card:#fff; --muted:#6b7280;
 }
-
-body {
-  font-family: system-ui, sans-serif;
-  background: var(--bakgrund);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  margin: 0;
+*{box-sizing:border-box}
+body{
+  font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  margin:0; min-height:100svh; display:grid; place-items:center; background:var(--bg); color:var(--ink);
 }
-
-h1 {
-  font-size: 2em;
-  margin-bottom: 1em;
+.container{width:min(820px,92vw); display:grid; gap:16px}
+h1{margin:0 0 6px; font-weight:700; letter-spacing:.2px}
+p.hint{margin:0 0 8px; color:var(--muted); font-size:.95rem}
+.card{
+  background:var(--card); border-radius:16px; padding:20px; box-shadow:0 4px 24px rgba(0,0,0,.08);
 }
-
-.timer {
-  font-size: 4em;
-  font-weight: bold;
-  padding: 40px 60px;
-  border-radius: 20px;
-  transition: background 0.4s ease, color 0.4s ease;
+.timer{
+  font-size: clamp(2.6rem, 6vw, 4rem); font-weight:800; text-align:center;
+  padding:28px 20px; border-radius:16px; transition:background .2s ease, color .2s ease;
 }
-
-.controls {
-  margin-top: 2em;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.rows{display:grid; gap:12px}
+.grid{
+  display:grid; gap:10px;
+  grid-template-columns: repeat(2, minmax(0,1fr));
 }
-
-label {
-  margin-top: 0.5em;
-  font-weight: 600;
+label{font-size:.92rem; font-weight:600; margin-bottom:4px; display:block}
+input[type=time]{
+  width:100%; padding:10px 12px; font:inherit; border:1px solid #d1d5db; border-radius:10px; background:#fff;
 }
-
-input[type="time"] {
-  padding: 0.6em;
-  font-size: 1em;
-  width: 180px;
-  text-align: center;
-  margin-bottom: 0.5em;
+.actions{display:flex; gap:8px; flex-wrap:wrap}
+button{
+  border:0; background:#111; color:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600
 }
-
-button {
-  background: #333;
-  color: #fff;
-  border: none;
-  padding: 0.6em 1.4em;
-  font-size: 1em;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 0.8em;
+button.secondary{background:#e5e7eb; color:#111}
+.meta{display:flex; gap:16px; flex-wrap:wrap; justify-content:center; color:#111; font-size:0.95rem}
+.meta b{font-weight:700}
+.progress-wrap{margin-top:8px}
+.progress{
+  height:10px; width:100%; background:#e5e7eb; border-radius:999px; overflow:hidden
 }
-
-button:hover {
-  background: #000;
+.progress>span{display:block; height:100%; width:0%; background:#111; transition:width .2s ease}
+.legend{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; justify-content:center}
+.badge{
+  display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 10px; background:#f3f4f6; font-size:.85rem
 }
+.dot{width:10px; height:10px; border-radius:50%}
+.small{font-size:.9rem; color:var(--muted)}
+/* färgtextkontrast */
+.lightText{color:#111} .darkText{color:#fff}
 </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Nedräkning av arbetsdag</h1>
+    <p class="hint">Ange start och slut. Timern räknar ner automatiskt och fungerar helt offline.</p>
 
-<h1>Nedräkning av arbetsdag</h1>
+    <div class="card rows">
+      <div class="grid">
+        <div>
+          <label for="start">Starttid</label>
+          <input type="time" id="start" value="08:00" />
+        </div>
+        <div>
+          <label for="end">Sluttid</label>
+          <input type="time" id="end" value="17:00" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="startNow">Starta nu</button>
+        <button class="secondary" id="save">Spara tider</button>
+        <button class="secondary" id="reset">Återställ</button>
+      </div>
+    </div>
 
-<div class="timer" id="timer">00:00:00</div>
-
-<div class="controls">
-  <label>Starttid:</label>
-  <input type="time" id="startTime" value="08:00">
-  <label>Sluttid:</label>
-  <input type="time" id="endTime" value="17:00">
-  <button id="startBtn">Starta nedräkning</button>
-</div>
+    <div class="card">
+      <div id="timer" class="timer">--:--:--</div>
+      <div class="meta" id="meta">
+        <div><b>Återstår:</b> <span id="remain">–</span></div>
+        <div><b>Förflutit:</b> <span id="elapsed">–</span></div>
+        <div><b>Totalt:</b> <span id="total">–</span></div>
+        <div><b>Slut:</b> <span id="endsAt">–</span></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress"><span id="bar"></span></div>
+      </div>
+      <div class="legend">
+        <span class="badge"><i class="dot" style="background:var(--röd)"></i>8–9h</span>
+        <span class="badge"><i class="dot" style="background:var(--orange)"></i>6–7h</span>
+        <span class="badge"><i class="dot" style="background:var(--blå)"></i>4–5h</span>
+        <span class="badge"><i class="dot" style="background:var(--ljusblå)"></i>2–3h</span>
+        <span class="badge"><i class="dot" style="background:var(--gul)"></i>1h</span>
+        <span class="badge"><i class="dot" style="background:var(--grön)"></i>&lt;1h</span>
+        <span class="badge"><i class="dot" style="background:var(--silver)"></i>&lt;30m</span>
+        <span class="badge"><i class="dot" style="background:var(--guld)"></i>&lt;15m</span>
+      </div>
+      <p class="small">Tips: Ändra tiderna – timern uppdateras direkt. Inga externa bibliotek.</p>
+    </div>
+  </div>
 
 <script>
-const timerEl = document.getElementById("timer");
-const startBtn = document.getElementById("startBtn");
-const startTimeInput = document.getElementById("startTime");
-const endTimeInput = document.getElementById("endTime");
+/* === Hjälpfunktioner === */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,'0');
+const fmtHMS = ms => {
+  const neg = ms < 0; ms = Math.abs(ms);
+  const h = Math.floor(ms/3600000);
+  const m = Math.floor((ms%3600000)/60000);
+  const s = Math.floor((ms%60000)/1000);
+  return (neg?'-':'') + `${pad(h)}:${pad(m)}:${pad(s)}`;
+};
+const parseTime = (val) => {
+  if(!val || !/^\d{2}:\d{2}$/.test(val)) return null;
+  const [H,M] = val.split(':').map(Number);
+  return {H,M};
+};
+const todayDateWith = ({H,M})=>{
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), H, M, 0, 0);
+};
+const clamp01 = x=> Math.max(0, Math.min(1, x));
 
-let countdownInterval;
+/* === Element === */
+const startInp = $('#start');
+const endInp   = $('#end');
+const timerEl  = $('#timer');
+const remainEl = $('#remain');
+const elapsedEl= $('#elapsed');
+const totalEl  = $('#total');
+const endsAtEl = $('#endsAt');
+const barEl    = $('#bar');
+const startNowBtn = $('#startNow');
+const saveBtn  = $('#save');
+const resetBtn = $('#reset');
 
-startBtn.addEventListener("click", () => {
-  const startVal = startTimeInput.value;
-  const endVal = endTimeInput.value;
+/* === Persistens === */
+const LS_KEY = 'workday-timer-v1';
+function loadState(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    if(s.start) startInp.value = s.start;
+    if(s.end)   endInp.value   = s.end;
+  }catch{}
+}
+function saveState(){
+  localStorage.setItem(LS_KEY, JSON.stringify({start:startInp.value, end:endInp.value}));
+}
 
-  if (!startVal || !endVal) {
-    alert("Fyll i både starttid och sluttid.");
+/* === Färglogik enligt regler === */
+function pickColor(hoursLeft){
+  // timmar kvar (flyttal)
+  if (hoursLeft >= 8) return 'var(--röd)';         // 8–9+
+  if (hoursLeft >= 6) return 'var(--orange)';      // 6–7
+  if (hoursLeft >= 4) return 'var(--blå)';         // 4–5
+  if (hoursLeft >= 2) return 'var(--ljusblå)';     // 2–3
+  if (hoursLeft >= 1) return 'var(--gul)';         // 1
+  if (hoursLeft >= 0.5) return 'var(--grön)';      // <1h
+  if (hoursLeft >= 0.25) return 'var(--silver)';   // <30m
+  return 'var(--guld)';                            // <15m
+}
+function textContrastFor(bg){
+  // grov kontrast: på väldigt ljusa färger -> mörk text, annars vit
+  const tmp = document.createElement('div');
+  tmp.style.color = bg; document.body.appendChild(tmp);
+  const rgb = getComputedStyle(tmp).color.match(/\d+/g).map(Number);
+  tmp.remove();
+  const [r,g,b]=rgb;
+  const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
+  return luminance > 0.6 ? 'lightText' : 'darkText';
+}
+
+/* === Uppdateringsloop === */
+let rafId = null, timeoutId = null;
+
+function update(){
+  const startT = parseTime(startInp.value);
+  const endT   = parseTime(endInp.value);
+
+  if(!startT || !endT){
+    timerEl.textContent = '--:--:--';
+    remainEl.textContent = elapsedEl.textContent = totalEl.textContent = endsAtEl.textContent = '–';
+    timerEl.style.background = '#e5e7eb';
+    timerEl.classList.remove('lightText','darkText'); timerEl.classList.add('lightText');
+    barEl.style.width = '0%';
+    scheduleNextTick();
+    return;
+  }
+
+  const start = todayDateWith(startT);
+  const end   = todayDateWith(endT);
+
+  if(end <= start){
+    timerEl.textContent = 'Fel: Sluttiden måste vara senare än starttiden';
+    remainEl.textContent = elapsedEl.textContent = totalEl.textContent = '–';
+    endsAtEl.textContent = end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    timerEl.style.background = 'var(--röd)';
+    timerEl.classList.remove('lightText','darkText'); timerEl.classList.add('darkText');
+    barEl.style.width = '0%';
+    scheduleNextTick();
     return;
   }
 
   const now = new Date();
-  const [startH, startM] = startVal.split(":").map(Number);
-  const [endH, endM] = endVal.split(":").map(Number);
+  const total = end - start;
+  const elapsed = Math.min(Math.max(now - start, 0), total);
+  const remaining = Math.max(end - now, 0);
 
-  const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startH, startM);
-  const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endH, endM);
+  // UI-texter
+  timerEl.textContent = remaining === 0 ? 'KLAR!' : fmtHMS(remaining);
+  remainEl.textContent = remaining === 0 ? '0:00:00' : fmtHMS(remaining);
+  elapsedEl.textContent = fmtHMS(elapsed);
+  totalEl.textContent = fmtHMS(total);
+  endsAtEl.textContent = end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-  if (endTime <= startTime) {
-    alert("Sluttiden måste vara senare än starttiden.");
-    return;
-  }
+  // Progress (andel förflutet)
+  const p = elapsed / total; // 0..1
+  barEl.style.width = (p*100).toFixed(1)+'%';
 
-  const totalMs = endTime - startTime;
+  // Färg efter timmar kvar
+  const hoursLeft = remaining / 3600000;
+  const bg = remaining === 0 ? 'var(--guld)' : pickColor(hoursLeft);
+  timerEl.style.background = bg;
+  timerEl.classList.remove('lightText','darkText');
+  timerEl.classList.add(textContrastFor(bg));
 
-  clearInterval(countdownInterval);
-  countdownInterval = setInterval(() => {
-    const current = new Date();
-    let remaining = endTime - current;
+  scheduleNextTick();
+}
 
-    if (remaining <= 0) {
-      clearInterval(countdownInterval);
-      timerEl.textContent = "KLAR!";
-      timerEl.style.background = "var(--guld)";
-      return;
-    }
+function scheduleNextTick(){
+  // Synka uppdatering nära nästa helt sekund för mindre drift.
+  if (timeoutId) clearTimeout(timeoutId);
+  const now = performance.now();
+  const msToNextSecond = 1000 - (Math.floor(now) % 1000);
+  timeoutId = setTimeout(()=> { rafId = requestAnimationFrame(update); }, msToNextSecond + 5);
+}
 
-    const hrs = Math.floor(remaining / (1000 * 60 * 60));
-    const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    const secs = Math.floor((remaining % (1000 * 60)) / 1000);
-
-    timerEl.textContent = `${hrs.toString().padStart(2,"0")}:${mins.toString().padStart(2,"0")}:${secs.toString().padStart(2,"0")}`;
-
-    // Färgbyte beroende på hur mycket tid som är kvar
-    const fraction = remaining / totalMs;
-    const hoursLeft = remaining / (1000 * 60 * 60);
-
-    if (hoursLeft >= 8) timerEl.style.background = "var(--röd)";
-    else if (hoursLeft >= 6) timerEl.style.background = "var(--orange)";
-    else if (hoursLeft >= 4) timerEl.style.background = "var(--blå)";
-    else if (hoursLeft >= 2) timerEl.style.background = "var(--ljusblå)";
-    else if (hoursLeft >= 1) timerEl.style.background = "var(--gul)";
-    else if (hoursLeft >= 0.5) timerEl.style.background = "var(--grön)";
-    else if (hoursLeft >= 0.25) timerEl.style.background = "var(--silver)";
-    else timerEl.style.background = "var(--guld)";
-  }, 1000);
+/* === Händelser === */
+startNowBtn.addEventListener('click', ()=>{
+  const now = new Date();
+  startInp.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  saveState();
+  update();
 });
-</script>
+saveBtn.addEventListener('click', ()=>{ saveState(); update(); });
+resetBtn.addEventListener('click', ()=>{
+  startInp.value = '08:00';
+  endInp.value = '17:00';
+  saveState();
+  update();
+});
+startInp.addEventListener('change', ()=>{ saveState(); update(); });
+endInp.addEventListener('change', ()=>{ saveState(); update(); });
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) update(); });
 
+/* === Init === */
+loadState();
+update();
+</script>
 </body>
 </html>
