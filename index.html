@@ -17,49 +17,48 @@
 body{
   background:var(--bg);color:var(--fg);font-family:"Inter",system-ui,sans-serif;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-height:100vh;gap:2rem;transition:background .3s ease,color .3s ease;
+  min-height:100vh;gap:2rem;transition:background .3s,color .3s;
 }
-h1{font-weight:700;font-size:2rem;letter-spacing:0.03em}
+h1{font-weight:700;font-size:2rem}
 .timer{
   font-size:5rem;font-weight:800;text-align:center;
   padding:40px 80px;border-radius:24px;
-  transition:background 0.4s ease,color 0.4s ease;
+  transition:background .4s ease,color .4s ease;
 }
 .controls{
   display:flex;flex-direction:column;align-items:center;gap:0.8rem;
   background:var(--panel);padding:1.5rem 2rem;border-radius:20px;
-  box-shadow:0 0 25px rgba(0,0,0,.3);transition:background .3s ease;
+  box-shadow:0 0 25px rgba(0,0,0,.3);
 }
-.row{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:center}
+.row{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
 input[type="time"]{
   background:transparent;border:1px solid #666;color:var(--fg);
-  font-size:1rem;padding:0.5rem 0.8rem;border-radius:10px;outline:none;width:120px;
+  font-size:1rem;padding:0.5rem 0.8rem;border-radius:10px;width:120px;
 }
 button{
   background:#222;color:#fff;border:none;border-radius:10px;
   padding:0.6rem 1.2rem;font-weight:600;font-size:1rem;cursor:pointer;
-  transition:background 0.2s ease, color .2s ease;
+  transition:.2s;
 }
 [data-theme="light"] button{background:#eee;color:#000}
-button:hover{opacity:.8}
+button:hover{opacity:.85}
 .progress{
   width:min(80vw,400px);height:10px;background:#2b2b2b;border-radius:999px;
-  overflow:hidden;position:relative;
+  overflow:hidden;
 }
 [data-theme="light"] .progress{background:#d1d5db}
 .progress span{
   display:block;height:100%;width:0%;background:var(--accent);
-  border-radius:999px;transition:width .4s ease;
+  border-radius:999px;transition:width .4s;
 }
 .theme-toggle{
   position:fixed;top:1rem;right:1rem;background:var(--panel);
   color:var(--fg);border:1px solid #444;padding:0.4rem 1rem;
-  border-radius:999px;font-weight:600;cursor:pointer;transition:.3s;
+  border-radius:999px;font-weight:600;cursor:pointer;
 }
 [data-theme="light"] .theme-toggle{border:1px solid #ccc}
 @media(max-width:600px){
   .timer{font-size:3.4rem;padding:30px 40px;}
-  h1{font-size:1.6rem}
 }
 </style>
 </head>
@@ -92,9 +91,8 @@ const stopBtn=document.getElementById("stopBtn");
 const startInput=document.getElementById("startTime");
 const endInput=document.getElementById("endTime");
 const themeBtn=document.getElementById("themeToggle");
-let timer=null,startTime,endTime;
+let timer=null,startTime=null,endTime=null,autoStart=false;
 
-/* Format */
 function fmt(ms){
   const h=Math.floor(ms/3600000),
         m=Math.floor((ms%3600000)/60000),
@@ -111,47 +109,46 @@ function color(h){
   if(h>=0.25)return"var(--silver)";
   return"var(--guld)";
 }
-
-/* Timerfunktion */
 function tick(){
+  if(!startTime||!endTime){tEl.textContent="--:--:--";return;}
   const now=new Date(),total=endTime-startTime,rem=endTime-now;
   if(rem<=0){clearInterval(timer);tEl.textContent="KLAR!";tEl.style.background="var(--guld)";bar.style.width="100%";return;}
-  const hrs=rem/3600000;const prog=(1-rem/total)*100;
+  const hrs=rem/3600000,prog=(1-rem/total)*100;
   tEl.textContent=fmt(rem);tEl.style.background=color(hrs);bar.style.width=prog+"%";
 }
 function startCountdown(){clearInterval(timer);tick();timer=setInterval(tick,1000);}
-
-/* Startknappar */
-startBtn.onclick=()=>{
+function setTimes(){
   const [sH,sM]=startInput.value.split(":").map(Number);
   const [eH,eM]=endInput.value.split(":").map(Number);
   const now=new Date();
   startTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),sH,sM);
   endTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eH,eM);
-  if(endTime<=startTime)return alert("Sluttid måste vara senare.");
-  startCountdown();
-};
+}
+startBtn.onclick=()=>{setTimes();if(endTime<=startTime)return alert("Sluttid måste vara senare.");autoStart=true;startCountdown();}
 nowBtn.onclick=()=>{
   const [eH,eM]=endInput.value.split(":").map(Number);
   const now=new Date();
   startTime=now;
   endTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eH,eM);
   if(endTime<=now)return alert("Sluttid måste vara senare än nu.");
-  startCountdown();
+  autoStart=true;startCountdown();
 };
-stopBtn.onclick=()=>{clearInterval(timer);tEl.textContent="--:--:--";tEl.style.background="transparent";bar.style.width="0%";};
+stopBtn.onclick=()=>{clearInterval(timer);autoStart=false;tEl.textContent="--:--:--";tEl.style.background="transparent";bar.style.width="0%";};
+[startInput,endInput].forEach(inp=>inp.addEventListener("change",()=>{
+  if(autoStart){setTimes();startCountdown();}
+}));
 
-/* Tema-växling */
+/* Tema */
 function setTheme(mode){
   document.documentElement.setAttribute("data-theme",mode);
   themeBtn.textContent = mode==="light" ? "Dark" : "Light";
   localStorage.setItem("theme-mode",mode);
 }
 themeBtn.onclick=()=>{
-  const current=document.documentElement.getAttribute("data-theme")||"dark";
-  setTheme(current==="dark"?"light":"dark");
-}
-(function initTheme(){
+  const cur=document.documentElement.getAttribute("data-theme")||"dark";
+  setTheme(cur==="dark"?"light":"dark");
+};
+(function init(){
   const saved=localStorage.getItem("theme-mode");
   setTheme(saved||"dark");
 })();
