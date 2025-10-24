@@ -5,179 +5,182 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Nedräkning</title>
 <style>
-:root {
-  --röd:#e63946;--orange:#ff9f1c;--blå:#0077b6;--ljusblå:#00b4d8;
-  --gul:#ffd60a;--grön:#52b788;--silver:#bfc0c0;--guld:#ffd700;
-  --bg:#0b0c10;--fg:#f4f4f5;--panel:#16171b;--accent:#3b82f6;
-}
-[data-theme="light"]{
-  --bg:#f7f8fa;--fg:#0c0c0d;--panel:#fff;--accent:#2563eb;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  background:var(--bg);color:var(--fg);font-family:"Inter",system-ui,sans-serif;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-height:100vh;gap:2rem;transition:background .3s,color .3s;
-}
-h1{font-weight:700;font-size:2rem}
-.timer{
-  font-size:5rem;font-weight:800;text-align:center;
-  padding:40px 80px;border-radius:24px;
-  transition:background .4s ease,color .4s ease;
-}
-.controls{
-  display:flex;flex-direction:column;align-items:center;gap:0.8rem;
-  background:var(--panel);padding:1.5rem 2rem;border-radius:20px;
-  box-shadow:0 0 25px rgba(0,0,0,.3);
-}
-.row{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
-input[type="time"]{
-  background:transparent;border:1px solid #666;color:var(--fg);
-  font-size:1rem;padding:0.5rem 0.8rem;border-radius:10px;width:120px;
-}
-button{
-  background:#222;color:#fff;border:none;border-radius:10px;
-  padding:0.6rem 1.2rem;font-weight:600;font-size:1rem;cursor:pointer;
-  transition:.2s;
-}
-[data-theme="light"] button{background:#eee;color:#000}
-button:hover{opacity:.85}
-.progress{
-  width:min(80vw,500px);height:10px;background:#2b2b2b;border-radius:999px;
-  overflow:hidden;
-}
-[data-theme="light"] .progress{background:#d1d5db}
-.progress span{
-  display:block;height:100%;width:0%;background:var(--accent);
-  border-radius:999px;transition:width .4s;
-}
-
-/* Ny huvudbar som visar hela dagen */
-.daybar{
-  width:min(85vw,600px);
-  height:24px;
-  background:linear-gradient(to right,var(--röd),var(--orange),var(--blå),var(--ljusblå),var(--gul),var(--grön),var(--silver),var(--guld));
-  border-radius:999px;
-  position:relative;
-  overflow:hidden;
-  box-shadow:0 0 10px rgba(0,0,0,.4);
-}
-.daybar span{
-  position:absolute;top:0;left:0;height:100%;
-  background:rgba(0,0,0,.45);
-  width:100%;
-  transition:width .4s ease;
-}
-
-/* Tema-knapp */
-.theme-toggle{
-  position:fixed;top:1rem;right:1rem;background:var(--panel);
-  color:var(--fg);border:1px solid #444;padding:0.4rem 1rem;
-  border-radius:999px;font-weight:600;cursor:pointer;
-}
-[data-theme="light"] .theme-toggle{border:1px solid #ccc}
-
-@media(max-width:600px){
-  .timer{font-size:3.4rem;padding:30px 40px;}
-}
+  :root{
+    --röd:#e63946; --orange:#ff9f1c; --blå:#0077b6; --ljusblå:#00b4d8;
+    --gul:#ffd60a; --grön:#2e7d32; --silver:#bfc0c0; --guld:#ffd700;
+  }
+  body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:16px}
+  h1{margin:0 0 12px 0;font-size:20px}
+  .timer{
+    font:700 56px/1 monospace; padding:16px 20px; border:1px solid #ddd; border-radius:8px;
+    display:inline-block; min-width:300px; text-align:center; background:#f4f4f4;
+  }
+  .daybar, .progress{height:12px; border:1px solid #ccc; border-radius:8px; overflow:hidden; margin:12px 0; width:100%}
+  .fill{height:100%; width:0%; background:#444; transition:width .3s}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px}
+  input[type=time]{padding:6px 8px; border:1px solid #bbb; border-radius:6px}
+  button{padding:6px 12px; border:1px solid #333; background:#fff; cursor:pointer; border-radius:6px}
+  button:active{transform:translateY(1px)}
+  .wrap{max-width:720px; margin:0 auto}
+  .legend{font-size:12px; color:#444; display:flex; gap:10px; flex-wrap:wrap}
+  .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <h1>Nedräkning</h1>
 
-<button id="themeToggle" class="theme-toggle">Dark</button>
+  <div id="timer" class="timer">--:--:--</div>
 
-<h1>Nedräkning</h1>
-<div class="timer" id="timer">--:--:--</div>
+  <!-- Hela dagen: fylls ju närmare slutet man kommer -->
+  <div class="daybar"><div id="dayFill" class="fill"></div></div>
 
-<div class="daybar"><span id="dayShade"></span></div>
-<div class="progress"><span id="bar"></span></div>
+  <!-- Diskret progress (samma som ovan, mindre) -->
+  <div class="progress"><div id="progressFill" class="fill"></div></div>
 
-<div class="controls">
   <div class="row">
-    <input type="time" id="startTime" value="08:00">
-    <input type="time" id="endTime" value="17:00">
-  </div>
-  <div class="row">
+    <label>Start: <input type="time" id="startTime" value="08:00"></label>
+    <label>Slut: <input type="time" id="endTime" value="17:00"></label>
     <button id="startBtn">Starta</button>
     <button id="nowBtn">Nu</button>
     <button id="stopBtn">Stop</button>
   </div>
+
+  <div class="legend" style="margin-top:10px">
+    <span><i class="dot" style="background:var(--röd)"></i>8–9h</span>
+    <span><i class="dot" style="background:var(--orange)"></i>6–7h</span>
+    <span><i class="dot" style="background:var(--blå)"></i>4–5h</span>
+    <span><i class="dot" style="background:var(--ljusblå)"></i>2–3h</span>
+    <span><i class="dot" style="background:var(--gul)"></i>1h</span>
+    <span><i class="dot" style="background:var(--grön)"></i><1h</span>
+    <span><i class="dot" style="background:var(--silver)"></i><30m</span>
+    <span><i class="dot" style="background:var(--guld)"></i><15m</span>
+  </div>
 </div>
 
 <script>
-const tEl=document.getElementById("timer");
-const bar=document.getElementById("bar");
-const shade=document.getElementById("dayShade");
-const startBtn=document.getElementById("startBtn");
-const nowBtn=document.getElementById("nowBtn");
-const stopBtn=document.getElementById("stopBtn");
-const startInput=document.getElementById("startTime");
-const endInput=document.getElementById("endTime");
-const themeBtn=document.getElementById("themeToggle");
-let timer=null,startTime=null,endTime=null,autoStart=false;
+  const tEl = document.getElementById('timer');
+  const dayFill = document.getElementById('dayFill');
+  const progFill = document.getElementById('progressFill');
+  const startInput = document.getElementById('startTime');
+  const endInput = document.getElementById('endTime');
+  const startBtn = document.getElementById('startBtn');
+  const nowBtn = document.getElementById('nowBtn');
+  const stopBtn = document.getElementById('stopBtn');
 
-function fmt(ms){
-  const h=Math.floor(ms/3600000),
-        m=Math.floor((ms%3600000)/60000),
-        s=Math.floor((ms%60000)/1000);
-  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
-function color(h){
-  if(h>=8)return"var(--röd)";
-  if(h>=6)return"var(--orange)";
-  if(h>=4)return"var(--blå)";
-  if(h>=2)return"var(--ljusblå)";
-  if(h>=1)return"var(--gul)";
-  if(h>=0.5)return"var(--grön)";
-  if(h>=0.25)return"var(--silver)";
-  return"var(--guld)";
-}
-function tick(){
-  if(!startTime||!endTime){tEl.textContent="--:--:--";return;}
-  const now=new Date(),total=endTime-startTime,rem=endTime-now;
-  if(rem<=0){clearInterval(timer);tEl.textContent="KLAR!";tEl.style.background="var(--guld)";bar.style.width="100%";shade.style.width="0%";return;}
-  const hrs=rem/3600000,prog=(1-rem/total)*100;
-  tEl.textContent=fmt(rem);tEl.style.background=color(hrs);
-  bar.style.width=prog+"%";
-  shade.style.width=(100-prog)+"%";
-}
-function startCountdown(){clearInterval(timer);tick();timer=setInterval(tick,1000);}
-function setTimes(){
-  const [sH,sM]=startInput.value.split(":").map(Number);
-  const [eH,eM]=endInput.value.split(":").map(Number);
-  const now=new Date();
-  startTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),sH,sM);
-  endTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eH,eM);
-}
-startBtn.onclick=()=>{setTimes();if(endTime<=startTime)return alert("Sluttid måste vara senare.");autoStart=true;startCountdown();}
-nowBtn.onclick=()=>{
-  const [eH,eM]=endInput.value.split(":").map(Number);
-  const now=new Date();
-  startTime=now;
-  endTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),eH,eM);
-  if(endTime<=now)return alert("Sluttid måste vara senare än nu.");
-  autoStart=true;startCountdown();
-};
-stopBtn.onclick=()=>{clearInterval(timer);autoStart=false;tEl.textContent="--:--:--";tEl.style.background="transparent";bar.style.width="0%";shade.style.width="100%";}
-[startInput,endInput].forEach(inp=>inp.addEventListener("change",()=>{
-  if(autoStart){setTimes();startCountdown();}
-}));
+  let startTime = null, endTime = null, running = false, interval = null;
 
-/* Tema */
-function setTheme(mode){
-  document.documentElement.setAttribute("data-theme",mode);
-  themeBtn.textContent = mode==="light" ? "Dark" : "Light";
-  localStorage.setItem("theme-mode",mode);
-}
-themeBtn.onclick=()=>{
-  const cur=document.documentElement.getAttribute("data-theme")||"dark";
-  setTheme(cur==="dark"?"light":"dark");
-};
-(function init(){
-  const saved=localStorage.getItem("theme-mode");
-  setTheme(saved||"dark");
-})();
+  function z(n){ return String(n).padStart(2,'0'); }
+  function fmt(ms){
+    ms = Math.max(0, ms);
+    const h = Math.floor(ms/3600000);
+    const m = Math.floor((ms%3600000)/60000);
+    const s = Math.floor((ms%60000)/1000);
+    return `${z(h)}:${z(m)}:${z(s)}`;
+  }
+  function colorByHoursLeft(h){
+    if(h >= 8) return 'var(--röd)';
+    if(h >= 6) return 'var(--orange)';
+    if(h >= 4) return 'var(--blå)';
+    if(h >= 2) return 'var(--ljusblå)';
+    if(h >= 1) return 'var(--gul)';
+    if(h >= 0.5) return 'var(--grön)';
+    if(h >= 0.25) return 'var(--silver)';
+    return 'var(--guld)';
+  }
+  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+  function parseTimesFromInputs(useNowStart=false){
+    const [sH,sM] = (startInput.value || '08:00').split(':').map(Number);
+    const [eH,eM] = (endInput.value   || '17:00').split(':').map(Number);
+    const now = new Date();
+    startTime = useNowStart ? new Date() : new Date(now.getFullYear(), now.getMonth(), now.getDate(), sH, sM, 0, 0);
+    endTime   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), eH, eM, 0, 0);
+  }
+
+  function stopTimerUI(){
+    running = false;
+    clearInterval(interval);
+    interval = null;
+    tEl.textContent = '--:--:--';
+    tEl.style.background = '#f4f4f4';
+    progFill.style.width = '0%';
+    dayFill.style.width = '0%';
+  }
+
+  function tick(){
+    if(!running || !startTime || !endTime){ return; }
+
+    const now = new Date();
+    const total = endTime - startTime;
+    const remaining = endTime - now;
+
+    // Ogiltiga tider
+    if (total <= 0){
+      stopTimerUI();
+      alert('Sluttid måste vara senare än starttid.');
+      return;
+    }
+
+    // Tid innan start -> visa kvar till slut ändå, progress 0
+    const elapsed = Math.max(0, now - startTime);
+    const p = clamp01(elapsed / total);         // 0..1 (andel klar)
+    const hrsLeft = Math.max(0, remaining) / 3600000;
+
+    if (remaining <= 0){
+      tEl.textContent = 'KLAR!';
+      tEl.style.background = 'var(--guld)';
+      progFill.style.width = '100%';
+      dayFill.style.width = '100%';
+      clearInterval(interval);
+      running = false;
+      return;
+    }
+
+    tEl.textContent = fmt(remaining);
+    tEl.style.background = colorByHoursLeft(hrsLeft);
+    progFill.style.width = (p*100).toFixed(1) + '%';
+    dayFill.style.width = (p*100).toFixed(1) + '%';
+  }
+
+  function start(useNow){
+    parseTimesFromInputs(!!useNow);
+    const now = new Date();
+    if (endTime <= (useNow ? now : startTime)){
+      alert(useNow ? 'Sluttid måste vara senare än nu.' : 'Sluttid måste vara senare än starttid.');
+      return;
+    }
+    running = true;
+    clearInterval(interval);
+    tick();
+    interval = setInterval(tick, 1000);
+  }
+
+  // Knappar
+  startBtn.addEventListener('click', () => start(false));
+  nowBtn  .addEventListener('click', () => start(true));
+  stopBtn .addEventListener('click', stopTimerUI);
+
+  // Om tider ändras medan den kör – starta om direkt med nya tider
+  [startInput, endInput].forEach(inp => {
+    inp.addEventListener('change', () => {
+      if (running) {
+        // Behåll om det var "Nu"-start: starta om med samma logik:
+        // Om nu ligger före ny starttid -> använd ny starttid, annars använd nu.
+        const now = new Date();
+        parseTimesFromInputs(false);
+        if (now > startTime) startTime = now; // efter start -> fortsätt från nu
+        if (endTime <= startTime){
+          stopTimerUI();
+          alert('Sluttid måste vara senare än starttid/nu.');
+          return;
+        }
+        clearInterval(interval);
+        tick();
+        interval = setInterval(tick, 1000);
+      }
+    });
+  });
 </script>
-
 </body>
 </html>
