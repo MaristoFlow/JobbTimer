@@ -1,186 +1,132 @@
-<!doctype html>
-<html lang="sv">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nedräkning</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workday Timeline</title>
 <style>
-  :root{
-    --röd:#e63946; --orange:#ff9f1c; --blå:#0077b6; --ljusblå:#00b4d8;
-    --gul:#ffd60a; --grön:#2e7d32; --silver:#bfc0c0; --guld:#ffd700;
+  :root {
+    --bg: #f4f5f7;
+    --card: #fff;
+    --text: #222;
+    --accent: #0066ff;
+    --error: #d93025;
   }
-  body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:16px}
-  h1{margin:0 0 12px 0;font-size:20px}
-  .timer{
-    font:700 56px/1 monospace; padding:16px 20px; border:1px solid #ddd; border-radius:8px;
-    display:inline-block; min-width:300px; text-align:center; background:#f4f4f4;
+
+  body {
+    font-family: system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
   }
-  .daybar, .progress{height:12px; border:1px solid #ccc; border-radius:8px; overflow:hidden; margin:12px 0; width:100%}
-  .fill{height:100%; width:0%; background:#444; transition:width .3s}
-  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px}
-  input[type=time]{padding:6px 8px; border:1px solid #bbb; border-radius:6px}
-  button{padding:6px 12px; border:1px solid #333; background:#fff; cursor:pointer; border-radius:6px}
-  button:active{transform:translateY(1px)}
-  .wrap{max-width:720px; margin:0 auto}
-  .legend{font-size:12px; color:#444; display:flex; gap:10px; flex-wrap:wrap}
-  .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle}
+
+  .container {
+    background: var(--card);
+    padding: 2rem 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    max-width: 400px;
+    width: 90%;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .info {
+    margin: 0.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+  }
+
+  .label {
+    font-weight: 600;
+  }
+
+  .error {
+    color: var(--error);
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .footer {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #777;
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Nedräkning</h1>
-
-  <div id="timer" class="timer">--:--:--</div>
-
-  <!-- Hela dagen: fylls ju närmare slutet man kommer -->
-  <div class="daybar"><div id="dayFill" class="fill"></div></div>
-
-  <!-- Diskret progress (samma som ovan, mindre) -->
-  <div class="progress"><div id="progressFill" class="fill"></div></div>
-
-  <div class="row">
-    <label>Start: <input type="time" id="startTime" value="08:00"></label>
-    <label>Slut: <input type="time" id="endTime" value="17:00"></label>
-    <button id="startBtn">Starta</button>
-    <button id="nowBtn">Nu</button>
-    <button id="stopBtn">Stop</button>
+  <div class="container">
+    <h1>Workday Timeline</h1>
+    <div id="output"></div>
+    <div class="footer">Workday ends at 23:00</div>
   </div>
-
-  <div class="legend" style="margin-top:10px">
-    <span><i class="dot" style="background:var(--röd)"></i>8–9h</span>
-    <span><i class="dot" style="background:var(--orange)"></i>6–7h</span>
-    <span><i class="dot" style="background:var(--blå)"></i>4–5h</span>
-    <span><i class="dot" style="background:var(--ljusblå)"></i>2–3h</span>
-    <span><i class="dot" style="background:var(--gul)"></i>1h</span>
-    <span><i class="dot" style="background:var(--grön)"></i><1h</span>
-    <span><i class="dot" style="background:var(--silver)"></i><30m</span>
-    <span><i class="dot" style="background:var(--guld)"></i><15m</span>
-  </div>
-</div>
 
 <script>
-  const tEl = document.getElementById('timer');
-  const dayFill = document.getElementById('dayFill');
-  const progFill = document.getElementById('progressFill');
-  const startInput = document.getElementById('startTime');
-  const endInput = document.getElementById('endTime');
-  const startBtn = document.getElementById('startBtn');
-  const nowBtn = document.getElementById('nowBtn');
-  const stopBtn = document.getElementById('stopBtn');
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const output = document.getElementById("output");
 
-  let startTime = null, endTime = null, running = false, interval = null;
+  const parseTime = (str) => {
+    if (!/^\d{1,2}:\d{2}$/.test(str)) return null;
+    const [h, m] = str.split(":").map(Number);
+    if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+    return h * 60 + m; // Convert to total minutes
+  };
 
-  function z(n){ return String(n).padStart(2,'0'); }
-  function fmt(ms){
-    ms = Math.max(0, ms);
-    const h = Math.floor(ms/3600000);
-    const m = Math.floor((ms%3600000)/60000);
-    const s = Math.floor((ms%60000)/1000);
-    return `${z(h)}:${z(m)}:${z(s)}`;
-  }
-  function colorByHoursLeft(h){
-    if(h >= 8) return 'var(--röd)';
-    if(h >= 6) return 'var(--orange)';
-    if(h >= 4) return 'var(--blå)';
-    if(h >= 2) return 'var(--ljusblå)';
-    if(h >= 1) return 'var(--gul)';
-    if(h >= 0.5) return 'var(--grön)';
-    if(h >= 0.25) return 'var(--silver)';
-    return 'var(--guld)';
-  }
-  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+  const formatTime = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+  };
 
-  function parseTimesFromInputs(useNowStart=false){
-    const [sH,sM] = (startInput.value || '08:00').split(':').map(Number);
-    const [eH,eM] = (endInput.value   || '17:00').split(':').map(Number);
-    const now = new Date();
-    startTime = useNowStart ? new Date() : new Date(now.getFullYear(), now.getMonth(), now.getDate(), sH, sM, 0, 0);
-    endTime   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), eH, eM, 0, 0);
+  // Default values
+  let startStr = params.get("start") || "09:00";
+  let endStr   = params.get("end") || "17:00";
+
+  const start = parseTime(startStr);
+  const end = parseTime(endStr);
+  const dayEnd = parseTime("23:00");
+
+  // Error handling
+  if (start === null || end === null) {
+    output.innerHTML = `<p class="error">Invalid time format. Use HH:MM (e.g., ?start=09:30&end=17:45)</p>`;
+    return;
   }
 
-  function stopTimerUI(){
-    running = false;
-    clearInterval(interval);
-    interval = null;
-    tEl.textContent = '--:--:--';
-    tEl.style.background = '#f4f4f4';
-    progFill.style.width = '0%';
-    dayFill.style.width = '0%';
+  if (start > end) {
+    output.innerHTML = `<p class="error">Start time cannot be later than end time.</p>`;
+    return;
   }
 
-  function tick(){
-    if(!running || !startTime || !endTime){ return; }
-
-    const now = new Date();
-    const total = endTime - startTime;
-    const remaining = endTime - now;
-
-    // Ogiltiga tider
-    if (total <= 0){
-      stopTimerUI();
-      alert('Sluttid måste vara senare än starttid.');
-      return;
-    }
-
-    // Tid innan start -> visa kvar till slut ändå, progress 0
-    const elapsed = Math.max(0, now - startTime);
-    const p = clamp01(elapsed / total);         // 0..1 (andel klar)
-    const hrsLeft = Math.max(0, remaining) / 3600000;
-
-    if (remaining <= 0){
-      tEl.textContent = 'KLAR!';
-      tEl.style.background = 'var(--guld)';
-      progFill.style.width = '100%';
-      dayFill.style.width = '100%';
-      clearInterval(interval);
-      running = false;
-      return;
-    }
-
-    tEl.textContent = fmt(remaining);
-    tEl.style.background = colorByHoursLeft(hrsLeft);
-    progFill.style.width = (p*100).toFixed(1) + '%';
-    dayFill.style.width = (p*100).toFixed(1) + '%';
+  // Calculation
+  let remaining;
+  if (end >= dayEnd) {
+    remaining = "All Day";
+  } else {
+    const diff = dayEnd - end;
+    const hours = Math.floor(diff / 60);
+    const minutes = diff % 60;
+    remaining = `${hours}h ${minutes}m`;
   }
 
-  function start(useNow){
-    parseTimesFromInputs(!!useNow);
-    const now = new Date();
-    if (endTime <= (useNow ? now : startTime)){
-      alert(useNow ? 'Sluttid måste vara senare än nu.' : 'Sluttid måste vara senare än starttid.');
-      return;
-    }
-    running = true;
-    clearInterval(interval);
-    tick();
-    interval = setInterval(tick, 1000);
-  }
-
-  // Knappar
-  startBtn.addEventListener('click', () => start(false));
-  nowBtn  .addEventListener('click', () => start(true));
-  stopBtn .addEventListener('click', stopTimerUI);
-
-  // Om tider ändras medan den kör – starta om direkt med nya tider
-  [startInput, endInput].forEach(inp => {
-    inp.addEventListener('change', () => {
-      if (running) {
-        // Behåll om det var "Nu"-start: starta om med samma logik:
-        // Om nu ligger före ny starttid -> använd ny starttid, annars använd nu.
-        const now = new Date();
-        parseTimesFromInputs(false);
-        if (now > startTime) startTime = now; // efter start -> fortsätt från nu
-        if (endTime <= startTime){
-          stopTimerUI();
-          alert('Sluttid måste vara senare än starttid/nu.');
-          return;
-        }
-        clearInterval(interval);
-        tick();
-        interval = setInterval(tick, 1000);
-      }
-    });
-  });
+  // Display results
+  output.innerHTML = `
+    <div class="info"><span class="label">Start Time:</span> <span>${formatTime(start)}</span></div>
+    <div class="info"><span class="label">End Time:</span> <span>${formatTime(end)}</span></div>
+    <div class="info"><span class="label">Remaining to 23:00:</span> <span>${remaining}</span></div>
+  `;
+})();
 </script>
 </body>
 </html>
