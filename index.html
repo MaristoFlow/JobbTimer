@@ -6,11 +6,13 @@
 <title>Workday Timeline</title>
 <style>
   :root {
-    --bg: #f4f5f7;
+    --bg: #f5f6f8;
     --card: #fff;
     --text: #222;
-    --accent: #0066ff;
+    --accent: #0078ff;
     --error: #d93025;
+    --bar-bg: #e2e4e7;
+    --bar-fill: #0078ff;
   }
 
   body {
@@ -20,41 +22,79 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    min-height: 100vh;
     margin: 0;
   }
 
   .container {
     background: var(--card);
-    padding: 2rem 2.5rem;
+    padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    max-width: 400px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    max-width: 420px;
     width: 90%;
   }
 
   h1 {
-    font-size: 1.3rem;
-    margin-bottom: 1rem;
     color: var(--accent);
+    font-size: 1.4rem;
     text-align: center;
+    margin-bottom: 1.5rem;
   }
 
   .info {
     margin: 0.5rem 0;
     display: flex;
     justify-content: space-between;
+  }
+
+  label {
+    font-weight: 600;
+  }
+
+  input[type="time"] {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
     font-size: 1rem;
   }
 
-  .label {
-    font-weight: 600;
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 1rem;
+    width: 100%;
+    transition: background 0.2s ease;
+  }
+
+  button:hover {
+    background: #005cd6;
   }
 
   .error {
     color: var(--error);
     text-align: center;
-    font-weight: 500;
+    margin-top: 1rem;
+  }
+
+  .bar {
+    margin-top: 1rem;
+    height: 18px;
+    background: var(--bar-bg);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--bar-fill);
+    width: 0%;
+    transition: width 0.4s ease;
   }
 
   .footer {
@@ -68,64 +108,101 @@
 <body>
   <div class="container">
     <h1>Workday Timeline</h1>
-    <div id="output"></div>
+
+    <div class="info">
+      <label for="start">Start Time:</label>
+      <input type="time" id="start" value="09:00">
+    </div>
+    <div class="info">
+      <label for="end">End Time:</label>
+      <input type="time" id="end" value="17:00">
+    </div>
+
+    <button id="update">Update Timeline</button>
+
+    <div id="results"></div>
+
+    <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+
     <div class="footer">Workday ends at 23:00</div>
   </div>
 
 <script>
 (function() {
+  const startInput = document.getElementById("start");
+  const endInput = document.getElementById("end");
+  const results = document.getElementById("results");
+  const barFill = document.getElementById("bar-fill");
+  const updateBtn = document.getElementById("update");
+
+  // Parse ?start= and ?end= from URL
   const params = new URLSearchParams(window.location.search);
-  const output = document.getElementById("output");
+  const startParam = params.get("start");
+  const endParam = params.get("end");
+  if (startParam) startInput.value = startParam;
+  if (endParam) endInput.value = endParam;
 
   const parseTime = (str) => {
     if (!/^\d{1,2}:\d{2}$/.test(str)) return null;
     const [h, m] = str.split(":").map(Number);
     if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-    return h * 60 + m; // Convert to total minutes
+    return h * 60 + m;
   };
 
   const formatTime = (minutes) => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
-  // Default values
-  let startStr = params.get("start") || "09:00";
-  let endStr   = params.get("end") || "17:00";
-
-  const start = parseTime(startStr);
-  const end = parseTime(endStr);
   const dayEnd = parseTime("23:00");
 
-  // Error handling
-  if (start === null || end === null) {
-    output.innerHTML = `<p class="error">Invalid time format. Use HH:MM (e.g., ?start=09:30&end=17:45)</p>`;
-    return;
+  function updateTimeline() {
+    const startStr = startInput.value || "09:00";
+    const endStr = endInput.value || "17:00";
+
+    const start = parseTime(startStr);
+    const end = parseTime(endStr);
+
+    if (start === null || end === null) {
+      results.innerHTML = `<p class="error">Invalid time format. Use HH:MM.</p>`;
+      return;
+    }
+    if (start > end) {
+      results.innerHTML = `<p class="error">Start time cannot be later than end time.</p>`;
+      barFill.style.width = "0%";
+      return;
+    }
+
+    let remaining;
+    if (end >= dayEnd) {
+      remaining = "All Day";
+    } else {
+      const diff = dayEnd - end;
+      const hours = Math.floor(diff / 60);
+      const minutes = diff % 60;
+      remaining = `${hours}h ${minutes}m`;
+    }
+
+    // Progress bar: portion of the day used from start to end relative to 23:00
+    const totalWorkday = dayEnd - start;
+    const progress = ((end - start) / totalWorkday) * 100;
+    barFill.style.width = Math.min(progress, 100) + "%";
+
+    results.innerHTML = `
+      <div class="info"><span><b>Start:</b> ${formatTime(start)}</span></div>
+      <div class="info"><span><b>End:</b> ${formatTime(end)}</span></div>
+      <div class="info"><span><b>Remaining to 23:00:</b> ${remaining}</span></div>
+    `;
+
+    // Update URL parameters dynamically
+    const newUrl = `${window.location.pathname}?start=${startStr}&end=${endStr}`;
+    history.replaceState(null, "", newUrl);
   }
 
-  if (start > end) {
-    output.innerHTML = `<p class="error">Start time cannot be later than end time.</p>`;
-    return;
-  }
-
-  // Calculation
-  let remaining;
-  if (end >= dayEnd) {
-    remaining = "All Day";
-  } else {
-    const diff = dayEnd - end;
-    const hours = Math.floor(diff / 60);
-    const minutes = diff % 60;
-    remaining = `${hours}h ${minutes}m`;
-  }
-
-  // Display results
-  output.innerHTML = `
-    <div class="info"><span class="label">Start Time:</span> <span>${formatTime(start)}</span></div>
-    <div class="info"><span class="label">End Time:</span> <span>${formatTime(end)}</span></div>
-    <div class="info"><span class="label">Remaining to 23:00:</span> <span>${remaining}</span></div>
-  `;
+  // Initial load
+  updateTimeline();
+  updateBtn.addEventListener("click", updateTimeline);
 })();
 </script>
 </body>
